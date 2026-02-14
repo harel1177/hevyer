@@ -17,6 +17,9 @@ Hevyer is a Python tool that fetches workout data from the Hevy fitness API, nor
 
 # See all CLI options
 .venv/bin/python main.py --help
+
+# Run the Streamlit web UI
+.venv/bin/streamlit run app.py
 ```
 
 There is no formal test framework, linter, or build system configured.
@@ -25,7 +28,8 @@ There is no formal test framework, linter, or build system configured.
 
 **Pipeline:** Hevy API → raw JSON → normalization → normalized JSON + prompt → AI model → workout report
 
-- **main.py** — CLI entry point. Fetches workouts, normalizes them, sends to OpenAI, and outputs a coaching report. Supports `--model`, `--output`, `--save-workouts`, and `--save-normalized` flags.
+- **main.py** — CLI entry point and pipeline functions (`fetch_workouts`, `build_report`). Supports `--model`, `--output`, `--save-workouts`, and `--save-normalized` flags.
+- **app.py** — Streamlit web UI that calls the pipeline functions and displays the coaching report in structured sections.
 - **normalize2.py** — Transforms raw workout data into `NormalizedWorkout` Pydantic models (flattening exercises and sets, computing duration as a timedelta).
 - **models/normalized_workout_model.py** — `NormalizedWorkout`, `Exercise`, and `ExerciseSet` Pydantic models.
 - **prompt** — A detailed prompt template instructing an AI to analyze normalized workout data as a strength training coach (progression, fatigue, exercise selection).

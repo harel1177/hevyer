@@ -7,11 +7,36 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from hevy_api_wrapper import Client
+from hevy_api_wrapper.models import PaginatedWorkouts
 from openai import OpenAI
 
 from normalize2 import normalize_workouts
 
 log = logging.getLogger("hevyer")
+
+
+def fetch_workouts() -> PaginatedWorkouts:
+    """Fetch workouts from the Hevy API. Requires HEVY_API_TOKEN in env."""
+    with Client.from_env() as client:
+        return client.workouts.get_workouts()
+
+
+def build_report(workouts: PaginatedWorkouts, model: str = "gpt-4o") -> tuple[str, str]:
+    """Normalize workouts, build prompt, call OpenAI, return (report, normalized_json)."""
+    normalized = normalize_workouts(workouts)
+    normalized_json = json.dumps([w.model_dump(mode="json") for w in normalized], indent=2)
+
+    prompt_template = Path("prompt").read_text()
+    full_prompt = prompt_template + normalized_json
+
+    openai_client = OpenAI()
+    response = openai_client.chat.completions.create(
+        model=model,
+        messages=[{"role": "user", "content": full_prompt}],
+    )
+
+    report = response.choices[0].message.content
+    return report, normalized_json
 
 
 def parse_args() -> argparse.Namespace:
@@ -58,8 +83,7 @@ def main() -> None:
     # Fetch workouts from Hevy API
     log.info("Fetching workouts from Hevy API...")
     try:
-        with Client.from_env() as client:
-            workouts = client.workouts.get_workouts()
+        workouts = fetch_workouts()
     except Exception as exc:
         log.error("Failed to fetch workouts from Hevy API: %s", exc)
         sys.exit(1)
@@ -68,32 +92,18 @@ def main() -> None:
         Path(args.save_workouts).write_text(workouts.model_dump_json(indent=2))
         log.info("Raw workouts saved to %s", args.save_workouts)
 
-    # Normalize workouts
+    # Generate report
     log.info("Normalizing %d workouts...", len(workouts.workouts))
-    normalized = normalize_workouts(workouts)
-    normalized_json = json.dumps([w.model_dump(mode="json") for w in normalized], indent=2)
+    log.info("Sending to OpenAI (%s)...", args.model)
+    try:
+        report, normalized_json = build_report(workouts, args.model)
+    except Exception as exc:
+        log.error("Failed to generate report: %s", exc)
+        sys.exit(1)
 
     if args.save_normalized:
         Path(args.save_normalized).write_text(normalized_json)
         log.info("Normalized workouts saved to %s", args.save_normalized)
-
-    # Build prompt
-    prompt_template = Path("prompt").read_text()
-    full_prompt = prompt_template + normalized_json
-
-    # Send to OpenAI
-    log.info("Sending to OpenAI (%s)...", args.model)
-    try:
-        openai_client = OpenAI()
-        response = openai_client.chat.completions.create(
-            model=args.model,
-            messages=[{"role": "user", "content": full_prompt}],
-        )
-    except Exception as exc:
-        log.error("OpenAI API call failed: %s", exc)
-        sys.exit(1)
-
-    report = response.choices[0].message.content
 
     if args.output:
         Path(args.output).write_text(report)

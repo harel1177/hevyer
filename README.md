@@ -44,6 +44,14 @@ OPENAI_API_KEY=your_openai_api_key
 
 Run `.venv/bin/python main.py --help` for all options.
 
+### Web UI (Streamlit)
+
+```bash
+.venv/bin/streamlit run app.py
+```
+
+This opens a browser with a sidebar to select the OpenAI model and a button to generate the report. The report is displayed in structured sections.
+
 ## Architecture
 
 ```
@@ -55,6 +63,7 @@ Hevy API → raw JSON → normalization → normalized JSON + prompt → OpenAI 
 | `main.py` | CLI entry point — orchestrates the full pipeline |
 | `normalize2.py` | Transforms raw Hevy workout data into flat Pydantic models |
 | `models/normalized_workout_model.py` | `NormalizedWorkout`, `Exercise`, and `ExerciseSet` Pydantic models |
+| `app.py` | Streamlit web UI for generating and viewing reports |
 | `prompt` | Prompt template for the AI coaching analysis |
 
 ## License
