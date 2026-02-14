@@ -21,13 +21,19 @@ def fetch_workouts() -> PaginatedWorkouts:
         return client.workouts.get_workouts()
 
 
-def build_report(workouts: PaginatedWorkouts, model: str = "gpt-4o") -> tuple[str, str]:
-    """Normalize workouts, build prompt, call OpenAI, return (report, normalized_json)."""
+def build_prompt(workouts: PaginatedWorkouts) -> tuple[str, str]:
+    """Normalize workouts and build the full prompt. Returns (full_prompt, normalized_json)."""
     normalized = normalize_workouts(workouts)
     normalized_json = json.dumps([w.model_dump(mode="json") for w in normalized], indent=2)
 
     prompt_template = Path("prompt").read_text()
     full_prompt = prompt_template + normalized_json
+    return full_prompt, normalized_json
+
+
+def build_report(workouts: PaginatedWorkouts, model: str = "gpt-4o") -> tuple[str, str]:
+    """Normalize workouts, build prompt, call OpenAI, return (report, normalized_json)."""
+    full_prompt, normalized_json = build_prompt(workouts)
 
     openai_client = OpenAI()
     response = openai_client.chat.completions.create(
